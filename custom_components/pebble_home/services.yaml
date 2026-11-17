@@ -1,0 +1,29 @@
+alert:
+  fields:
+    title:
+      required: true
+      example: "Bins out tonight"
+      selector:
+        text:
+    message:
+      example: "Green bin and food waste"
+      selector:
+        text:
+    camera:
+      selector:
+        entity:
+          domain: camera
+    image:
+      example: "/local/doorbell.jpg"
+      selector:
+        text:
+    vibe:
+      selector:
+        select:
+          options: ["none", "short", "double", "long", "doorbell", "alarm"]
+    kind:
+      default: alert
+      selector:
+        select:
+          custom_value: true
+          options: ["alert", "doorbell", "person", "package", "alarm"]

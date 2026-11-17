@@ -1,0 +1,173 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pebble Home",
+        "description": "Choose what your Pebble can see and do. The guesses come from your house.",
+        "data": {
+          "alarm_entity": "Alarm panel",
+          "doorbell_entities": "Doorbell triggers",
+          "doorbell_camera": "Doorbell camera",
+          "cameras": "Cameras",
+          "people": "People",
+          "locks": "Locks",
+          "perimeter": "Doors and windows",
+          "weather": "Weather",
+          "status_entities": "Status entities",
+          "quick_actions": "Quick actions",
+          "assist_agent": "Assist agent",
+          "frigate_events": "Frigate alerts",
+          "frigate_labels": "Frigate labels",
+          "frigate_zones_only": "Only objects inside a zone",
+          "frigate_vibrate": "Buzz for Frigate",
+          "alarm_code": "Alarm code",
+          "watch_pin": "Watch PIN",
+          "media_players": "Speakers",
+          "exit_delay": "Exit delay",
+          "entry_delay": "Entry delay"
+        },
+        "data_description": {
+          "alarm_entity": "Shown on the face; arm and disarm from the watch.",
+          "doorbell_entities": "Entities that turn on (or event entities that fire) when someone presses the bell.",
+          "doorbell_camera": "Snapshot sent with doorbell alerts.",
+          "cameras": "Cameras you can browse on the watch.",
+          "people": "Shown as home or away.",
+          "locks": "Unlocking needs the watch PIN.",
+          "perimeter": "The face shows a count of these that are open.",
+          "status_entities": "Up to six extra values on the status screen.",
+          "quick_actions": "Scripts, scenes and switches you can fire from the watch.",
+          "assist_agent": "Conversation agent for voice commands from the watch microphone.",
+          "frigate_events": "Listen to frigate/events over MQTT.",
+          "frigate_vibrate": "Events are always logged; this decides when the watch buzzes.",
+          "alarm_code": "Only if your panel needs a code. Stored in Home Assistant, never sent to the phone.",
+          "watch_pin": "Digits you enter on the watch to unlock doors. Optional. If set, the watch asks for it to disarm or unlock, and Home Assistant checks it. You can also set one in the Pebble app's Home settings.",
+          "media_players": "Sonos and other players you can control from the watch.",
+          "exit_delay": "How long your panel counts down when arming. Shown as a countdown on the watch.",
+          "entry_delay": "How long the panel waits after a door opens before the siren."
+        }
+      }
+    },
+    "error": {
+      "pin_digits": "PIN must be digits only"
+    },
+    "abort": {
+      "single_instance_allowed": "Pebble Home is already set up."
+    },
+    "create_entry": {
+      "default": "Done. In the Pebble app open Home settings and paste this key:\n\n`{key}`\n\nYou can see it again under Configure."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pebble Home",
+        "description": "Watch key: `{key}`\n\nWatch apps: open [{store}]({store}) on your phone and tap **Add to the Pebble app**. They then update with this integration.",
+        "data": {
+          "alarm_entity": "Alarm panel",
+          "doorbell_entities": "Doorbell triggers",
+          "doorbell_camera": "Doorbell camera",
+          "cameras": "Cameras",
+          "people": "People",
+          "locks": "Locks",
+          "perimeter": "Doors and windows",
+          "weather": "Weather",
+          "status_entities": "Status entities",
+          "quick_actions": "Quick actions",
+          "assist_agent": "Assist agent",
+          "frigate_events": "Frigate alerts",
+          "frigate_labels": "Frigate labels",
+          "frigate_zones_only": "Only objects inside a zone",
+          "frigate_vibrate": "Buzz for Frigate",
+          "alarm_code": "Alarm code",
+          "watch_pin": "Watch PIN",
+          "media_players": "Speakers",
+          "exit_delay": "Exit delay",
+          "entry_delay": "Entry delay"
+        },
+        "data_description": {
+          "alarm_entity": "Shown on the face; arm and disarm from the watch.",
+          "doorbell_entities": "Entities that turn on (or event entities that fire) when someone presses the bell.",
+          "doorbell_camera": "Snapshot sent with doorbell alerts.",
+          "cameras": "Cameras you can browse on the watch.",
+          "people": "Shown as home or away.",
+          "locks": "Unlocking needs the watch PIN.",
+          "perimeter": "The face shows a count of these that are open.",
+          "status_entities": "Up to six extra values on the status screen.",
+          "quick_actions": "Scripts, scenes and switches you can fire from the watch.",
+          "assist_agent": "Conversation agent for voice commands from the watch microphone.",
+          "frigate_events": "Listen to frigate/events over MQTT.",
+          "frigate_vibrate": "Events are always logged; this decides when the watch buzzes.",
+          "alarm_code": "Only if your panel needs a code. Stored in Home Assistant, never sent to the phone.",
+          "watch_pin": "Digits you enter on the watch to unlock doors. Optional. If set, the watch asks for it to disarm or unlock, and Home Assistant checks it. You can also set one in the Pebble app's Home settings.",
+          "media_players": "Sonos and other players you can control from the watch.",
+          "exit_delay": "How long your panel counts down when arming. Shown as a countdown on the watch.",
+          "entry_delay": "How long the panel waits after a door opens before the siren."
+        }
+      }
+    },
+    "error": {
+      "pin_digits": "PIN must be digits only"
+    }
+  },
+  "selector": {
+    "frigate_vibe": {
+      "options": {
+        "armed": "Only when the alarm is armed",
+        "always": "Always",
+        "never": "Never"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "last_seen": {
+        "name": "Last seen"
+      }
+    },
+    "notify": {
+      "notify": {
+        "name": "Watch"
+      }
+    },
+    "button": {
+      "reset_pin": {
+        "name": "Reset PIN lockout"
+      }
+    }
+  },
+  "services": {
+    "alert": {
+      "name": "Alert the watch",
+      "description": "Put an alert on the Pebble, optionally with a camera snapshot.",
+      "fields": {
+        "title": {
+          "name": "Title",
+          "description": "Short headline."
+        },
+        "message": {
+          "name": "Message",
+          "description": "One line of detail."
+        },
+        "camera": {
+          "name": "Camera",
+          "description": "Snapshot to attach."
+        },
+        "vibe": {
+          "name": "Vibration",
+          "description": "How to buzz. Defaults to the doorbell pattern for kind doorbell, otherwise short."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "Sets the icon and colour."
+        },
+        "image": {
+          "name": "Image",
+          "description": "A picture to show: /local/..., /api/... (e.g. a Frigate snapshot), media-source://..., an image.* entity or a URL."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "domain": "pebble_home",
+  "name": "Pebble Home",
+  "after_dependencies": [
+    "mqtt",
+    "conversation",
+    "frigate"
+  ],
+  "codeowners": [
+    "@chrisns"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http",
+    "camera"
+  ],
+  "documentation": "https://github.com/chrisns/pebble-home",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/chrisns/pebble-home/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "1.1.0"
+}

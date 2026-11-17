@@ -1,0 +1,111 @@
+{
+  "name": "home-face",
+  "author": "Chris Nesbitt-Smith",
+  "version": "1.1.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Home Face",
+    "uuid": "4dc37a89-bd7d-4b09-abb1-def14a275f29",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "gabbro"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "cmd",
+      "seq",
+      "ver",
+      "online",
+      "msg",
+      "ok",
+      "aS",
+      "aL",
+      "aR",
+      "aBy",
+      "aT",
+      "ppl",
+      "locks",
+      "openN",
+      "openL",
+      "wxT",
+      "wxC",
+      "st",
+      "cams",
+      "acts",
+      "pinLock",
+      "media",
+      "mediaT",
+      "eId",
+      "eTs",
+      "eK",
+      "eT",
+      "eM",
+      "eC",
+      "eV",
+      "eI",
+      "eAlert",
+      "eIdx",
+      "eCount",
+      "iTok",
+      "iW",
+      "iH",
+      "iBpp",
+      "iStride",
+      "iPal",
+      "iOff",
+      "iData",
+      "iTotal",
+      "rCam",
+      "rEv",
+      "rMedia",
+      "rW",
+      "rH",
+      "rBpp",
+      "rFit",
+      "xK",
+      "xM",
+      "xId",
+      "xCode",
+      "xText",
+      "bat",
+      "chg",
+      "pinReq",
+      "aRem",
+      "aTo",
+      "aF",
+      "eA",
+      "eAf"
+    ],
+    "capabilities": [
+      "configurable"
+    ],
+    "configPage": "src/config.html",
+    "usesPermissions": [
+      {
+        "name": "LocalNetwork",
+        "reason": "To reach Home Assistant on your home network",
+        "required": false
+      },
+      {
+        "name": "Timeline",
+        "reason": "To pin doorbell and camera events to your timeline",
+        "required": false
+      },
+      {
+        "name": "ShowNotifications",
+        "reason": "To alert you when someone is at the door",
+        "required": false
+      }
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}
