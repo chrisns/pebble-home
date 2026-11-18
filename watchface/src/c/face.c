@@ -232,20 +232,63 @@ static void draw_sidebar(GContext *ctx, GRect b, AlarmState a, bool stale) {
   draw_battery(ctx, GPoint(SIDE_CX - 2, 198), fg);
 }
 
-// One upright letter per step round the rim, reading top to bottom down the
-// left side, centred on 270 degrees.
-static void draw_rim_text(GContext *ctx, const char *txt, GRect b, int radius, int step_deg, GColor col) {
-  int n = strlen(txt);
+// Rim lettering: a tiny stroke font drawn in 1 px lines, each letter's
+// baseline on a circle just inside the rim and its strokes bent to follow it,
+// reading top to bottom down the left side with the feet towards the edge.
+// Glyphs are strokes of (x, y) digit pairs on a 4 x 6 grid, y up; a space
+// separates strokes.
+static const char *rim_glyph(char c) {
+  switch (c) {
+    case 'A': return "0004264440 0343";
+    case 'B': return "00063645443303 3342413000";
+    case 'D': return "00062644422000";
+    case 'E': return "46060040 0333";
+    case 'I': return "1636 2620 1030";
+    case 'L': return "060040";
+    case 'N': return "00064046";
+    case 'P': return "00063645443303";
+    case 'T': return "0646 2620";
+    case 'U': return "060110304146";
+    default: return NULL;
+  }
+}
+
+#define RIM_SCALE 1.25f  // grid unit in pixels: letters 5 wide, 7.5 tall
+#define RIM_ADVANCE 6    // grid units per letter, gap included
+#define RIM_SPACE 4
+
+static GPoint rim_point(GPoint c, float radius, float s, float total, float gx, float gy) {
+  // s and gx run along the baseline (down the left side), gy inwards.
+  float along = s + gx * RIM_SCALE;
+  float ang = 0.75f + (total / 2 - along) / (radius * 6.2831853f);  // in turns; 0.75 is 9 o'clock
+  int32_t t = (int32_t)(ang * TRIG_MAX_ANGLE);
+  float r = radius - gy * RIM_SCALE;
+  return GPoint(c.x + (int)(sin_lookup(t) * r / TRIG_MAX_RATIO + 0.5f),
+                c.y - (int)(cos_lookup(t) * r / TRIG_MAX_RATIO + 0.5f));
+}
+
+static void draw_rim_text(GContext *ctx, const char *txt, GRect b, int radius, GColor col) {
   GPoint c = grect_center_point(&b);
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
-  graphics_context_set_text_color(ctx, col);
-  for (int i = 0; i < n; i++) {
-    if (txt[i] == ' ') continue;
-    int32_t ang = DEG_TO_TRIGANGLE(270 + (n - 1) * step_deg / 2 - i * step_deg);
-    int x = c.x + sin_lookup(ang) * radius / TRIG_MAX_RATIO;
-    int y = c.y - cos_lookup(ang) * radius / TRIG_MAX_RATIO;
-    char ch[2] = {txt[i], 0};
-    graphics_draw_text(ctx, ch, font, GRect(x - 8, y - 10, 16, 18), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  float total = 0;
+  for (const char *p = txt; *p; p++) total += (*p == ' ' ? RIM_SPACE : RIM_ADVANCE) * RIM_SCALE;
+  total -= (RIM_ADVANCE - 4) * RIM_SCALE;  // no gap after the last letter
+  graphics_context_set_stroke_color(ctx, col);
+  graphics_context_set_stroke_width(ctx, 1);
+  graphics_context_set_antialiased(ctx, true);
+  float s = 0;
+  for (const char *p = txt; *p; p++) {
+    const char *g = rim_glyph(*p);
+    for (; g && *g; g++) {
+      // One stroke: consecutive digit pairs until a space or the end.
+      GPoint prev = rim_point(c, radius, s, total, g[0] - '0', g[1] - '0');
+      for (g += 2; *g && *g != ' '; g += 2) {
+        GPoint next = rim_point(c, radius, s, total, g[0] - '0', g[1] - '0');
+        graphics_draw_line(ctx, prev, next);
+        prev = next;
+      }
+      if (!*g) break;
+    }
+    s += (*p == ' ' ? RIM_SPACE : RIM_ADVANCE) * RIM_SCALE;
   }
 }
 
@@ -286,7 +329,7 @@ static void draw_face(GContext *ctx, GRect b) {
   }
 
   // An older build than the integration ships: say so round the left rim.
-  if (g_home.upd[0]) draw_rim_text(ctx, "UPDATE IN APP", b, 118, 5, GColorChromeYellow);
+  if (g_home.upd[0]) draw_rim_text(ctx, "UPDATE IN PEBBLE APP", b, 125, GColorChromeYellow);
 
   // Below the time: lock and openings. (No presence: phone location isn't
   // reliable enough to put on the wrist.)
