@@ -61,6 +61,7 @@ typedef struct {
   int32_t print_pct;    // -1 when nothing is printing
   int32_t print_eta;    // epoch the print should finish, 0 unknown
   bool print_paused;
+  char upd[16];         // "face,app": builds older than the integration ships
   char status[200];  // "Solar:2.1kW|..."
   char cams[300];    // "camera.porch:Porch|..."
   char acts[420];    // "script.night:Good night|..."

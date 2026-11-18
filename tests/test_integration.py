@@ -489,3 +489,19 @@ async def test_print_progress_from_octoprint(hass, setup):
     hass.states.async_set("sensor.octoprint_current_state", "Paused")
     hass.states.async_set("sensor.octoprint_estimated_finish_time", "unknown")
     assert snap()["pr"] == {"p": 42, "e": 0, "s": "paused"}
+
+
+async def test_face_hears_when_the_watch_build_is_older_than_shipped(hass, setup):
+    hdr = {**H, "X-Pebble-App": "face/1.3.0"}
+    store = hass.data[DOMAIN]["store"]
+    shipped = {a.type: a.version for a in await store.apps()}
+    assert shipped.get("watchface"), "the integration ships a face build"
+    r = await setup.client.get("/api/pebble_home/v1/sync", headers=hdr)
+    assert (await r.json())["state"]["upd"] == "face"
+    # Up to date (major.minor is all the watch keeps): nothing to say.
+    hdr["X-Pebble-App"] = "face/" + ".".join(shipped["watchface"].split(".")[:2])
+    r = await setup.client.get("/api/pebble_home/v1/sync", headers=hdr)
+    assert "upd" not in (await r.json())["state"]
+    # An old Home app shows on the face too.
+    r = await setup.client.get("/api/pebble_home/v1/sync", headers={**H, "X-Pebble-App": "app/0.9.0"})
+    assert (await r.json())["state"]["upd"] == "app"

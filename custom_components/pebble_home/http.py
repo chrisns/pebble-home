@@ -57,7 +57,14 @@ class _Base(HomeAssistantView):
         hub = _hub(request.app["hass"], request)
         if hub is None:
             raise web.HTTPUnauthorized(text="bad key")
+        hub.note_app(request.headers.get("X-Pebble-App", ""))
         return hub
+
+    async def _shipped(self, request: web.Request, hub: PebbleHub) -> None:
+        """Tell the hub which builds the integration's appstore feed offers."""
+        store = request.app["hass"].data.get(DOMAIN, {}).get("store")
+        if store is not None:
+            hub.set_shipped({a.type: a.version for a in await store.apps()})
 
 
 class SyncView(_Base):
@@ -69,6 +76,7 @@ class SyncView(_Base):
     async def get(self, request: web.Request) -> web.Response:
         hub = self._auth(request)
         hub.touch()
+        await self._shipped(request, hub)
         try:
             since_v = int(request.query.get("v", "-1"))
             since_e = int(request.query.get("e", "0"))
@@ -153,6 +161,7 @@ class HelloView(_Base):
         except ValueError:
             data = {}
         hub.update_watch(data if isinstance(data, dict) else {})
+        await self._shipped(request, hub)
         return self.json({"state": hub.snapshot(), "events": hub.events_since(0)[-1:]})
 
 

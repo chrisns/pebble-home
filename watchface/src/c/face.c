@@ -232,6 +232,23 @@ static void draw_sidebar(GContext *ctx, GRect b, AlarmState a, bool stale) {
   draw_battery(ctx, GPoint(SIDE_CX - 2, 198), fg);
 }
 
+// One upright letter per step round the rim, reading top to bottom down the
+// left side, centred on 270 degrees.
+static void draw_rim_text(GContext *ctx, const char *txt, GRect b, int radius, int step_deg, GColor col) {
+  int n = strlen(txt);
+  GPoint c = grect_center_point(&b);
+  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+  graphics_context_set_text_color(ctx, col);
+  for (int i = 0; i < n; i++) {
+    if (txt[i] == ' ') continue;
+    int32_t ang = DEG_TO_TRIGANGLE(270 + (n - 1) * step_deg / 2 - i * step_deg);
+    int x = c.x + sin_lookup(ang) * radius / TRIG_MAX_RATIO;
+    int y = c.y - cos_lookup(ang) * radius / TRIG_MAX_RATIO;
+    char ch[2] = {txt[i], 0};
+    graphics_draw_text(ctx, ch, font, GRect(x - 8, y - 10, 16, 18), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  }
+}
+
 static void draw_face(GContext *ctx, GRect b) {
   bool stale = !g_home.online || (g_home.synced_at && time(NULL) - g_home.synced_at > 300);
   AlarmState a = (stale || !g_home.have_state) ? ALARM_UNKNOWN : g_home.alarm;
@@ -267,6 +284,9 @@ static void draw_face(GContext *ctx, GRect b) {
       draw_text(ctx, line, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 44, 18, lw - 58, 18), ACCENT);
     }
   }
+
+  // An older build than the integration ships: say so round the left rim.
+  if (g_home.upd[0]) draw_rim_text(ctx, "UPDATE IN APP", b, 118, 5, GColorChromeYellow);
 
   // Below the time: lock and openings. (No presence: phone location isn't
   // reliable enough to put on the wrist.)

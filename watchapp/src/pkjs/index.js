@@ -4,6 +4,7 @@ require('./hass').init({
   devUrl: dev.url,
   devRemote: dev.remote,
   devKey: dev.key,
+  version: require('./version'),
   pins: false, // the face pins events; one pin per event
   replayFresh: true, // opened during a doorbell: show it again
   demo: dev.demo,

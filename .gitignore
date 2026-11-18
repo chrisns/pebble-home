@@ -24,5 +24,7 @@ tools/*.png
 dist/
 watchface/src/pkjs/config_page.js
 watchapp/src/pkjs/config_page.js
+watchface/src/pkjs/version.js
+watchapp/src/pkjs/version.js
 custom_components/pebble_home/.claude/
 .pushrc

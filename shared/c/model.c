@@ -66,6 +66,8 @@ void model_apply_state(DictionaryIterator *it) {
   read_int(it, MESSAGE_KEY_prP, &g_home.print_pct);
   read_int(it, MESSAGE_KEY_prE, &g_home.print_eta);
   if (read_int(it, MESSAGE_KEY_prS, &v)) g_home.print_paused = v;
+  g_home.upd[0] = '\0';
+  copy_str(it, MESSAGE_KEY_upd, g_home.upd, sizeof(g_home.upd));
   copy_str(it, MESSAGE_KEY_st, g_home.status, sizeof(g_home.status));
   copy_str(it, MESSAGE_KEY_cams, g_home.cams, sizeof(g_home.cams));
   copy_str(it, MESSAGE_KEY_acts, g_home.acts, sizeof(g_home.acts));

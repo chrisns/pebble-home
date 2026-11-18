@@ -85,6 +85,15 @@ def find_printer(hass: HomeAssistant) -> dict[str, str]:
     return {}
 
 
+APP_TYPES = {"face": "watchface", "app": "watchapp"}
+
+
+def _ver(v: str) -> tuple[int, int]:
+    """major.minor: all the watch keeps of a version."""
+    parts = [int(x) if x.isdigit() else 0 for x in str(v).split(".")[:2]] + [0, 0]
+    return parts[0], parts[1]
+
+
 ALARM_SHORT = {
     "disarmed": "Disarmed",
     "armed_away": "Armed away",
@@ -189,6 +198,9 @@ class PebbleHub:
         self.pin_failures = 0
         self.pin_locked_until = 0.0
         self.printer: dict[str, str] = {}
+        # Builds on the watch ("face"/"app" -> "1.4.0") and in watch/ ("watchface" -> "1.5.0").
+        self.app_versions: dict[str, str] = {}
+        self.shipped: dict[str, str] = {}
 
     # ------------------------------------------------------------------ config
     @property
@@ -767,6 +779,8 @@ class PebbleHub:
 
         if pr := self._print_job():
             out["pr"] = pr
+        if old := self.outdated():
+            out["upd"] = ",".join(old)
 
         out["cams"] = [{"id": c, "n": n[:16]} for c, n in self.visible_cameras()]
         out["acts"] = [{"id": a, "n": self._name(a)[:28]} for a in self._list(CONF_ACTIONS)]
@@ -834,6 +848,26 @@ class PebbleHub:
         await self.async_pin_result(True)
 
     # ------------------------------------------------------------------ watch
+    def note_app(self, header: str) -> None:
+        """Record the build a request came from ("face/1.4.0")."""
+        name, _, version = header.partition("/")
+        if name in APP_TYPES and version and self.app_versions.get(name) != version[:12]:
+            self.app_versions[name] = version[:12]
+            self._state_cache = None  # this very reply should carry it
+            self.hass.async_create_task(self._bump_if_changed())
+
+    def set_shipped(self, shipped: dict[str, str]) -> None:
+        if shipped != self.shipped:
+            self.shipped = shipped
+            self._state_cache = None
+            self.hass.async_create_task(self._bump_if_changed())
+
+    def outdated(self) -> list[str]:
+        """Watch apps older than the build the integration ships."""
+        return [name for name, kind in APP_TYPES.items()
+                if name in self.app_versions and kind in self.shipped
+                and _ver(self.app_versions[name]) < _ver(self.shipped[kind])]
+
     def update_watch(self, data: dict[str, Any]) -> None:
         w = self.watch
         if "bat" in data:

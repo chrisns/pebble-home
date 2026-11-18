@@ -4,6 +4,7 @@ require('./hass').init({
   devUrl: dev.url,
   devRemote: dev.remote,
   devKey: dev.key,
+  version: require('./version'),
   pins: true,
   demo: dev.demo,
   legacyConfigUrl: 'data:text/html;charset=utf-8,' + encodeURIComponent(require('./config_page'))

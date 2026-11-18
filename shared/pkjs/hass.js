@@ -135,6 +135,7 @@ function http(method, path, body, cb, asText) {
     }
     xhr.open(method, base + '/api/pebble_home/v1' + path, true);
     xhr.setRequestHeader('X-Pebble-Key', c.key);
+    if (opts.version) xhr.setRequestHeader('X-Pebble-App', opts.name + '/' + opts.version);
     if (body) xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       if (done) return;
@@ -203,6 +204,7 @@ function packState(s) {
   d.prP = s.pr ? s.pr.p : -1;
   d.prE = s.pr && s.pr.e ? s.pr.e : 0;
   d.prS = s.pr && s.pr.s === 'paused' ? 1 : 0;
+  d.upd = s.upd || ''; // watch builds older than the integration ships
   d.pinLock = s.pin_lock || 0;
   d.pinReq = (s.pin || localPin()) ? 1 : 0;
   // The watch keeps the Quick Launch choices so it can act on them before we're up.

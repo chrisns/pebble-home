@@ -12,6 +12,10 @@ for proj in $targets; do
   cp shared/c/*.c shared/c/*.h "$proj/src/c/shared/"
   cp shared/pkjs/hass.js shared/pkjs/demo.js "$proj/src/pkjs/"
   cp shared/web/config.html "$proj/src/config.html"
+  # The phone side tells Home Assistant which build is on the watch, so the
+  # face can say when the integration ships a newer one.
+  python3 -c 'import json,sys;print("module.exports = " + json.dumps(json.load(open(sys.argv[1]))["version"]) + ";")' \
+    "$proj/package.json" > "$proj/src/pkjs/version.js"
   # The same page as a JS string, for phones without the plugins preview,
   # where the app falls back to the legacy openURL settings flow.
   python3 -c 'import json,sys;print("module.exports = " + json.dumps(open(sys.argv[1]).read()) + ";")' \
