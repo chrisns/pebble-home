@@ -6,7 +6,7 @@ Home Assistant on a Pebble Round 2 (`gabbro`, 260×260 colour, round). Three par
 |---|---|
 | `custom_components/pebble_home` | Home Assistant integration. Watches the house, keeps an event feed with snapshots, converts camera frames and album art into bitmaps the watch draws directly, and exposes a small, keyed API. Adds `notify.pebble` (takes phone-style `data:` with images), `notify.pebble_watch`, `pebble_home.alert`, battery and last-seen sensors, and a PIN lockout reset button. |
 | `watchface/` | **Home Face.** Time ringed by the alarm state (green disarmed, amber home, violet night, red away, blinking for entry and exit delay). Weather, latest event or now playing, front lock, open doors and windows, and who is home. When the doorbell goes, the face becomes the porch camera, refreshing live. Flick your wrist to dismiss it. |
-| `watchapp/` | **Home.** Alarm arm and disarm (PIN), Sonos music with album art and a volume ring, live cameras, event history with snapshots, locks, quick actions, Assist by voice, and status. Quick Launch opens straight into Music. |
+| `watchapp/` | **Home.** Alarm arm and disarm (PIN), Sonos music with album art and a volume ring, live cameras, event history with snapshots, locks, quick actions, Assist by voice, and status. |
 
 ## How alerts reach the watch
 

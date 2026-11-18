@@ -192,19 +192,12 @@ void main_menu_on_message(DictionaryIterator *it, int32_t cmd) {
 }
 
 // --------------------------------------------------------------- dispatch
-static bool s_quick_music;
 static bool s_quick_launched;  // by Quick Launch, at s_launched_at
 static bool s_quick_tap;       // ...by a single tap of Up or Down on the face
 static time_t s_launched_at;
 
 static void on_message(DictionaryIterator *it, int32_t cmd) {
   static bool said_hello;
-  if (cmd == CMD_STATE && s_quick_music && g_home.have_state) {
-    // Exactly one speaker playing: skip the list and go straight to it.
-    s_quick_music = false;
-    int n = 0, idx = music_playing_index(&n);
-    if (n == 1) music_push(idx);
-  }
   if (cmd == CMD_STATE && !said_hello) {
     said_hello = true;
     comm_hello();
@@ -268,11 +261,9 @@ int main(void) {
   s_launched_at = time(NULL);
   if (launch_reason() == APP_LAUNCH_QUICK_LAUNCH) {
     s_quick_launched = true;
+    // Quick Launch opens the main menu like any other launch. It's remembered
+    // only so a tap of Up/Down while the doorbell rings can let them in.
     s_quick_tap = launch_get_quick_launch_action() == APP_QUICK_LAUNCH_ACTION_TAP;
-    // Quick Launch is for the thing you do in a hurry: the music. The speaker
-    // list opens on what's playing; the first state refines it.
-    s_quick_music = true;
-    list_push(LIST_SPEAKERS);
   } else if (launch_reason() == APP_LAUNCH_TIMELINE_ACTION) {
     // Opened from an event pin: go straight to its snapshot.
     camera_push_event((int32_t)launch_get_args(), "Snapshot", "", "alert");

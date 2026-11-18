@@ -123,7 +123,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *dat
   IconKind icon;
   GColor accent;
   if (!rows() && s_kind != LIST_EVENTS) {
-    draw_label(ctx, "Nothing here", FONT_KEY_GOTHIC_24_BOLD, GRect(0, b.size.h / 2 - 16, b.size.w, 28),
+    draw_label(ctx, g_home.have_state ? "Nothing here" : "Loading…", FONT_KEY_GOTHIC_24_BOLD, GRect(0, b.size.h / 2 - 16, b.size.w, 28),
                GColorWhite, GTextAlignmentCenter);
     return;
   }
