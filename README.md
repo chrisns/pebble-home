@@ -76,6 +76,12 @@ Select and Down all unlock; the alert shows live video from the camera (about on
 second over Bluetooth) and closes 45 s after the ring. The pill says **Unlocked** only once
 Home Assistant has seen the lock open.
 
+**Quick Launch.** Home can sit on any of the watch's Quick Launch slots (Tap Up, Tap Down,
+Hold Up, Hold Center, Hold Down, Hold Back), and each slot can open a different screen:
+the main menu, Alarm, Music, Cameras, Events, Doors, Actions, Assist or Status. Choose them
+under **Quick Launch** on Home's settings page in the Pebble app. Every slot opens the main
+menu until you change it, and a ringing doorbell always comes first.
+
 ### Watch: building it yourself
 
 ```bash

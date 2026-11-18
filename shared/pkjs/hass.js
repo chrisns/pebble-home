@@ -201,6 +201,8 @@ function packState(s) {
   d.mediaT = media.map(function (m) { return clean(m.t, 40) + ':' + clean(m.a, 30); }).join('|');
   d.pinLock = s.pin_lock || 0;
   d.pinReq = (s.pin || localPin()) ? 1 : 0;
+  // The watch keeps the Quick Launch choices so it can act on them before we're up.
+  if (opts.name === 'app') d.ql = quickLaunch();
   return d;
 }
 
@@ -437,6 +439,18 @@ function sendImage(p) {
 // ------------------------------------------------------------------ actions
 function localPin() { return localStorage.getItem('pin') || ''; }
 
+// Quick Launch: one digit per slot (Tap Up, Tap Down, Hold Up, Hold Center,
+// Hold Down, Hold Back) naming the screen it opens; 0 is the main menu.
+var QL_SLOTS = 6;
+function quickLaunch() {
+  var q = String(localStorage.getItem('quick_launch') || '').replace(/[^0-9]/g, '');
+  while (q.length < QL_SLOTS) q += '0';
+  return q.substr(0, QL_SLOTS);
+}
+function saveQuickLaunch(q) {
+  if (typeof q === 'string' && /^[0-9]{1,6}$/.test(q)) localStorage.setItem('quick_launch', q);
+}
+
 // A PIN set in the phone settings guards disarm and unlock on the phone side,
 // with its own escalating lockout. A PIN set in Home Assistant is checked there.
 function localPinOk(code) {
@@ -548,12 +562,14 @@ function init(options) {
     var m = e.message || e.data || {};
     if (m.type === 'get') {
       var c = config();
-      e.respond({ url: c.url, remote: c.remote, hasKey: !!c.key, hasPin: !!localPin() });
+      e.respond({ url: c.url, remote: c.remote, hasKey: !!c.key, hasPin: !!localPin(),
+                  app: opts.name === 'app', ql: quickLaunch() });
     } else if (m.type === 'save') {
       if (m.url) localStorage.setItem('ha_url', String(m.url).trim());
       if (m.remote !== undefined) localStorage.setItem('ha_remote', String(m.remote || '').trim());
       activeBase = null;
       if (m.key) localStorage.setItem('ha_key', String(m.key).trim());
+      saveQuickLaunch(m.ql);
       if (m.pin !== undefined && m.pin !== null && m.pin !== '__keep__') {
         var pin = String(m.pin).replace(/\D/g, '').substr(0, 4);
         if (pin.length === 4 || pin === '') localStorage.setItem('pin', pin);
@@ -571,7 +587,8 @@ function init(options) {
   // Legacy settings flow (older phone apps and the emulator).
   Pebble.addEventListener('showConfiguration', function () {
     var c = config();
-    Pebble.openURL(opts.legacyConfigUrl + '#' + encodeURIComponent(JSON.stringify({ url: c.url, remote: c.remote })));
+    Pebble.openURL(opts.legacyConfigUrl + '#' + encodeURIComponent(JSON.stringify({
+      url: c.url, remote: c.remote, app: opts.name === 'app', ql: quickLaunch() })));
   });
   Pebble.addEventListener('webviewclosed', function (e) {
     if (!e || !e.response) return;
@@ -581,6 +598,7 @@ function init(options) {
       if (r.remote !== undefined) localStorage.setItem('ha_remote', r.remote || '');
       activeBase = null;
       if (r.key) localStorage.setItem('ha_key', r.key);
+      saveQuickLaunch(r.ql);
       if (typeof r.pin === 'string' && r.pin !== '__keep__') localStorage.setItem('pin', r.pin.replace(/\D/g, '').substr(0, 4));
       lastVersion = -1;
       sync(true);

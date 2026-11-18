@@ -191,6 +191,61 @@ void main_menu_on_message(DictionaryIterator *it, int32_t cmd) {
   if (s_menu && (cmd == CMD_STATE || cmd == CMD_EVENT)) menu_layer_reload_data(s_menu);
 }
 
+// ------------------------------------------------------------ quick launch
+// Where each Quick Launch slot opens, chosen on the settings page and kept on
+// the watch so the app can go there before the phone answers. One digit per
+// slot; keep Dest in step with QL_DESTS in shared/web/config.html.
+typedef enum { DEST_MENU, DEST_ALARM, DEST_MUSIC, DEST_CAMERAS, DEST_EVENTS, DEST_DOORS, DEST_ACTIONS,
+               DEST_ASSIST, DEST_STATUS, DEST_COUNT } Dest;
+#define QL_SLOTS 6
+#define PERSIST_QL 1
+
+static int ql_slot(void) {
+  ButtonId b = launch_button();
+  switch (launch_get_quick_launch_action()) {
+    case APP_QUICK_LAUNCH_ACTION_TAP:
+      return b == BUTTON_ID_UP ? 0 : b == BUTTON_ID_DOWN ? 1 : -1;
+    case APP_QUICK_LAUNCH_ACTION_HOLD:
+      return b == BUTTON_ID_UP ? 2 : b == BUTTON_ID_SELECT ? 3 : b == BUTTON_ID_DOWN ? 4 : b == BUTTON_ID_BACK ? 5 : -1;
+    default:
+      return -1;  // a combo reports a stand-in button: main menu
+  }
+}
+
+static Dest ql_dest(int slot) {
+  char q[QL_SLOTS + 1] = "";
+  if (slot < 0 || persist_read_string(PERSIST_QL, q, sizeof(q)) <= slot) return DEST_MENU;
+  int d = q[slot] - '0';
+  return d > 0 && d < DEST_COUNT ? (Dest)d : DEST_MENU;
+}
+
+static void ql_open(Dest d) {
+  switch (d) {
+    case DEST_ALARM: alarm_push(); break;
+    case DEST_MUSIC: list_push(LIST_SPEAKERS); break;
+    case DEST_CAMERAS: list_push(LIST_CAMERAS); break;
+    case DEST_EVENTS: list_push(LIST_EVENTS); break;
+    case DEST_DOORS: list_push(LIST_LOCKS); break;
+    case DEST_ACTIONS: list_push(LIST_ACTIONS); break;
+    case DEST_ASSIST: assist_start(); break;
+    case DEST_STATUS: list_push(LIST_STATUS); break;
+    default: break;
+  }
+}
+
+static void ql_store(DictionaryIterator *it) {
+  Tuple *t = dict_find(it, MESSAGE_KEY_ql);
+  if (!t || t->type != TUPLE_CSTRING) return;
+  char now[QL_SLOTS + 1] = "";
+  persist_read_string(PERSIST_QL, now, sizeof(now));
+  if (strncmp(now, t->value->cstring, QL_SLOTS) != 0) {
+    char q[QL_SLOTS + 1];
+    strncpy(q, t->value->cstring, QL_SLOTS);
+    q[QL_SLOTS] = '\0';
+    persist_write_string(PERSIST_QL, q);
+  }
+}
+
 // --------------------------------------------------------------- dispatch
 static bool s_quick_launched;  // by Quick Launch, at s_launched_at
 static bool s_quick_tap;       // ...by a single tap of Up or Down on the face
@@ -198,6 +253,7 @@ static time_t s_launched_at;
 
 static void on_message(DictionaryIterator *it, int32_t cmd) {
   static bool said_hello;
+  if (cmd == CMD_STATE) ql_store(it);
   if (cmd == CMD_STATE && !said_hello) {
     said_hello = true;
     comm_hello();
@@ -261,9 +317,11 @@ int main(void) {
   s_launched_at = time(NULL);
   if (launch_reason() == APP_LAUNCH_QUICK_LAUNCH) {
     s_quick_launched = true;
-    // Quick Launch opens the main menu like any other launch. It's remembered
-    // only so a tap of Up/Down while the doorbell rings can let them in.
+    // Each slot opens what the settings page chose (the main menu unless told
+    // otherwise). A tap of Up/Down while the doorbell rings still lets them in:
+    // the doorbell lands on top and closes back to the face.
     s_quick_tap = launch_get_quick_launch_action() == APP_QUICK_LAUNCH_ACTION_TAP;
+    ql_open(ql_dest(ql_slot()));
   } else if (launch_reason() == APP_LAUNCH_TIMELINE_ACTION) {
     // Opened from an event pin: go straight to its snapshot.
     camera_push_event((int32_t)launch_get_args(), "Snapshot", "", "alert");

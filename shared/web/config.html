@@ -18,6 +18,9 @@
   #status { margin-top:14px; min-height:22px; font-size:14px; }
   .ok { color:var(--ok); } .bad { color:var(--warn); }
   ol { color:var(--mute); padding-left:20px; margin:0; font-size:14px; }
+  select { width:100%; padding:12px; border-radius:10px; border:1px solid #2a2f3a; background:#0c0e12; color:var(--ink); font-size:16px; }
+  select + label { margin-top:14px; }
+  h2 { font-size:16px; margin:0 0 4px; } .card p { color:var(--mute); font-size:14px; margin:0 0 14px; }
 </style>
 </head>
 <body>
@@ -35,7 +38,12 @@
     <a href="#" id="clearpin" style="display:none;color:var(--acc);font-size:14px;margin-top:8px;">Remove PIN</a>
     <div id="status"></div>
   </div>
-  <button id="save">Connect</button>
+  <div class="card" id="qlcard" style="display:none">
+    <h2>Quick Launch</h2>
+    <p>On the watch, set any of these in Settings → Quick Launch to Home, then choose where each one opens.</p>
+    <div id="qlslots"></div>
+  </div>
+  <button id="save">Save</button>
   <div class="card" style="margin-top:14px">
     <ol>
       <li>Install the Pebble Home integration in Home Assistant.</li>
@@ -47,13 +55,34 @@
   var $ = function (id) { return document.getElementById(id); };
   function status(text, ok) { var s = $('status'); s.textContent = text; s.className = ok ? 'ok' : 'bad'; }
   function legacy() { return typeof Pebble === 'undefined' || !Pebble.sendMessage; }
+  // Keep in step with Dest in watchapp/src/c/main.c.
+  var QL_NAMES = ['Tap Up', 'Tap Down', 'Hold Up', 'Hold Center', 'Hold Down', 'Hold Back'];
+  var QL_DESTS = ['Main menu', 'Alarm', 'Music', 'Cameras', 'Events', 'Doors', 'Actions', 'Assist (voice)', 'Status'];
+  function quickLaunch(show, q) {
+    if (!show) return;
+    q = String(q || '');
+    var box = $('qlslots');
+    QL_NAMES.forEach(function (name, i) {
+      var l = document.createElement('label'); l.textContent = name; l.htmlFor = 'ql' + i;
+      var s = document.createElement('select'); s.id = 'ql' + i;
+      QL_DESTS.forEach(function (d, j) { var o = document.createElement('option'); o.value = j; o.textContent = d; s.appendChild(o); });
+      s.value = /[0-9]/.test(q.charAt(i)) && +q.charAt(i) < QL_DESTS.length ? q.charAt(i) : '0';
+      box.appendChild(l); box.appendChild(s);
+    });
+    $('qlcard').style.display = 'block';
+  }
+  function qlValue() {
+    if ($('qlcard').style.display === 'none') return undefined;
+    return QL_NAMES.map(function (n, i) { return $('ql' + i).value; }).join('');
+  }
   if (legacy()) {
-    try { var h = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}')); if (h.url) $('url').value = h.url; if (h.remote) $('remote').value = h.remote; } catch (e) {}
+    try { var h = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}')); if (h.url) $('url').value = h.url; if (h.remote) $('remote').value = h.remote; quickLaunch(h.app, h.ql); } catch (e) {}
   } else {
     Pebble.addEventListener('ready', function () {
       Pebble.sendMessage('pkjs', { type: 'get' }).then(function (r) {
         if (r.url) $('url').value = r.url;
         if (r.remote) $('remote').value = r.remote;
+        quickLaunch(r.app, r.ql);
         if (r.hasKey) $('key').placeholder = 'saved (leave blank to keep)';
         if (r.hasPin) { $('pin').placeholder = 'set (type a new one to change it)'; $('pin').dataset.keep = '1'; $('clearpin').style.display = 'inline-block'; }
       });
@@ -63,7 +92,7 @@
     e.preventDefault();
     delete $('pin').dataset.keep;
     $('pin').value = '';
-    $('pin').placeholder = 'no PIN (press Connect to save)';
+    $('pin').placeholder = 'no PIN (press Save to keep it)';
     this.style.display = 'none';
   });
   $('save').addEventListener('click', function () {
@@ -73,11 +102,11 @@
     if (!pin && $('pin').dataset.keep) pin = '__keep__';
     if (!/^https?:\/\//.test(url)) return status('URL must start with http:// or https://');
     if (legacy()) {
-      location.href = 'pebblejs://close#' + encodeURIComponent(JSON.stringify({ url: url, remote: remote, key: key, pin: pin }));
+      location.href = 'pebblejs://close#' + encodeURIComponent(JSON.stringify({ url: url, remote: remote, key: key, pin: pin, ql: qlValue() }));
       return;
     }
     status('Connecting…', true);
-    Pebble.sendMessage('pkjs', { type: 'save', url: url, remote: remote, key: key, pin: pin }).then(function (r) {
+    Pebble.sendMessage('pkjs', { type: 'save', url: url, remote: remote, key: key, pin: pin, ql: qlValue() }).then(function (r) {
       if (r.ok) status('Connected. Alarm: ' + (r.alarm || 'n/a') + '. You can close this.', true);
       else status('Could not connect: ' + r.err + '. Check the URL and key.');
     });
