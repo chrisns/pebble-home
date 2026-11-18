@@ -140,15 +140,27 @@ static void draw_text(GContext *ctx, const char *txt, const char *font, GRect bo
 #define SIDE_CX 214
 #define ACCENT GColorMagenta
 
-static const char *alarm_word(AlarmState a) {
-  switch (a) {
-    case ALARM_DISARMED: return "OFF";
-    case ALARM_ARMED_HOME: return "HOME";
-    case ALARM_ARMED_NIGHT: return "NIGHT";
-    case ALARM_ARMED_AWAY: return "AWAY";
-    case ALARM_TRIGGERED: return "ALARM";
-    default: return "--";
+static void draw_health(GContext *ctx, GColor fg) {
+  HealthValue bpm = 0, steps = 0;
+#if defined(PBL_HEALTH)
+  time_t now = time(NULL), start = time_start_of_today();
+  bpm = health_service_peek_current_value(HealthMetricHeartRateBPM);
+  if (health_service_metric_accessible(HealthMetricStepCount, start, now) & HealthServiceAccessibilityMaskAvailable) {
+    steps = health_service_sum_today(HealthMetricStepCount);
   }
+#endif
+  GPoint c = GPoint(SIDE_CX, 106);
+  graphics_context_set_fill_color(ctx, GColorRed);
+  graphics_fill_circle(ctx, c, 16);
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_circle(ctx, c, 13);
+  char num[8];
+  if (bpm > 0) snprintf(num, sizeof(num), "%d", (int)bpm);
+  else snprintf(num, sizeof(num), "--");
+  draw_text(ctx, num, FONT_KEY_GOTHIC_18_BOLD, GRect(c.x - 15, c.y - 13, 30, 22), GColorWhite);
+  if (steps >= 1000) snprintf(num, sizeof(num), "%d,%03d", (int)steps / 1000, (int)steps % 1000);
+  else snprintf(num, sizeof(num), "%d", (int)steps);
+  draw_text(ctx, num, FONT_KEY_GOTHIC_14_BOLD, GRect(SIDE_CX - 32, 122, 64, 18), fg);
 }
 
 static void draw_battery(GContext *ctx, GPoint c, GColor fg) {
@@ -213,12 +225,9 @@ static void draw_sidebar(GContext *ctx, GRect b, AlarmState a, bool stale) {
     if (sp && strlen(cond) > 7) *sp = 0;  // "Partly cloudy" -> "Partly"
     draw_text(ctx, cond, FONT_KEY_GOTHIC_14, GRect(SIDE_CX - 32, 66, 64, 18), fg);
   }
-  // Alarm: a shield in the state colour on a dark disc so it reads on magenta.
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, GPoint(SIDE_CX, 106), 15);
-  theme_icon(ctx, ICON_SHIELD, GPoint(SIDE_CX, 105), 9, stale ? GColorLightGray : theme_alarm_colour(a));
-  draw_text(ctx, stale ? (g_home.configured ? "OFFLINE" : "SETUP") : alarm_word(a), FONT_KEY_GOTHIC_14_BOLD,
-            GRect(SIDE_CX - 32, 121, 64, 18), fg);
+  // Middle: the last heart rate in a red-ringed disc, today's steps under it,
+  // both from the watch's own sensors. (The alarm is above the time.)
+  draw_health(ctx, fg);
   // Date
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
@@ -313,7 +322,10 @@ static void draw_face(GContext *ctx, GRect b) {
   graphics_draw_text(ctx, mm, big, GRect(lx, 122, lw, 66), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
 
   // Above the time: the alarm in its colour and, over it, a print under way.
-  if (g_home.have_state && !stale) {
+  if (stale) {
+    draw_text(ctx, g_home.configured ? "Offline" : "Set up", FONT_KEY_GOTHIC_14_BOLD,
+              GRect(lx + 30, 36, lw - 34, 18), GColorLightGray);
+  } else if (g_home.have_state) {
     draw_text(ctx, g_home.alarm_label, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 30, 36, lw - 34, 18),
               theme_alarm_colour(a));
     if (g_home.print_pct >= 0) {
@@ -337,13 +349,16 @@ static void draw_face(GContext *ctx, GRect b) {
     char lock_state[12] = "", status[40];
     list_field(g_home.locks, 0, 2, lock_state, sizeof(lock_state));
     bool locked = strcmp(lock_state, "locked") == 0;
+    bool unlocked = strcmp(lock_state, "unlocked") == 0 || strcmp(lock_state, "open") == 0;
+    // Unknown, unavailable or jammed: say we don't know rather than "Unlocked".
+    const char *lock = locked ? "Locked" : unlocked ? "Unlocked" : "Lock ?";
     if (g_home.open_n) {
-      snprintf(status, sizeof(status), "%s · %d open", locked ? "Locked" : "Unlocked", (int)g_home.open_n);
+      snprintf(status, sizeof(status), "%s · %d open", lock, (int)g_home.open_n);
     } else {
-      snprintf(status, sizeof(status), "%s · All shut", locked ? "Locked" : "Unlocked");
+      snprintf(status, sizeof(status), "%s · All shut", lock);
     }
     draw_text(ctx, status, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 10, 194, lw - 10, 18),
-              (!locked || g_home.open_n) ? GColorOrange : GColorLightGray);
+              (unlocked || g_home.open_n) ? GColorOrange : GColorLightGray);
   } else if (!g_home.configured) {
     draw_text(ctx, "Set up in the Pebble app", FONT_KEY_GOTHIC_14, GRect(lx + 6, 192, lw - 6, 18), GColorLightGray);
   }
@@ -518,6 +533,12 @@ static void bt(bool connected) {
   layer_mark_dirty(s_canvas);
 }
 
+#if defined(PBL_HEALTH)
+static void health(HealthEventType type, void *ctx) {
+  if (type != HealthEventSleepUpdate && s_canvas) layer_mark_dirty(s_canvas);
+}
+#endif
+
 static void window_load(Window *w) {
   Layer *root = window_get_root_layer(w);
   s_canvas = layer_create(layer_get_bounds(root));
@@ -544,6 +565,9 @@ static void init(void) {
   accel_tap_service_subscribe(tap);
   battery_state_service_subscribe(battery);
   connection_service_subscribe((ConnectionHandlers) { .pebble_app_connection_handler = bt });
+#if defined(PBL_HEALTH)
+  health_service_events_subscribe(health, NULL);
+#endif
   schedule_poll();
 }
 
@@ -553,6 +577,9 @@ static void deinit(void) {
   accel_tap_service_unsubscribe();
   battery_state_service_unsubscribe();
   connection_service_unsubscribe();
+#if defined(PBL_HEALTH)
+  health_service_events_unsubscribe();
+#endif
   window_destroy(s_window);
 }
 
