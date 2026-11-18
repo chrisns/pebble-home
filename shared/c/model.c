@@ -60,6 +60,12 @@ void model_apply_state(DictionaryIterator *it) {
   copy_str(it, MESSAGE_KEY_openL, g_home.open_list, sizeof(g_home.open_list));
   g_home.wx_valid = read_int(it, MESSAGE_KEY_wxT, &g_home.wx_temp);
   copy_str(it, MESSAGE_KEY_wxC, g_home.wx_cond, sizeof(g_home.wx_cond));
+  g_home.print_pct = -1;
+  g_home.print_eta = 0;
+  g_home.print_paused = false;
+  read_int(it, MESSAGE_KEY_prP, &g_home.print_pct);
+  read_int(it, MESSAGE_KEY_prE, &g_home.print_eta);
+  if (read_int(it, MESSAGE_KEY_prS, &v)) g_home.print_paused = v;
   copy_str(it, MESSAGE_KEY_st, g_home.status, sizeof(g_home.status));
   copy_str(it, MESSAGE_KEY_cams, g_home.cams, sizeof(g_home.cams));
   copy_str(it, MESSAGE_KEY_acts, g_home.acts, sizeof(g_home.acts));

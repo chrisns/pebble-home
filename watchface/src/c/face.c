@@ -252,25 +252,21 @@ static void draw_face(GContext *ctx, GRect b) {
   graphics_draw_text(ctx, hh, big, GRect(lx, 56, lw, 66), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
   graphics_draw_text(ctx, mm, big, GRect(lx, 122, lw, 66), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
 
-  // Above the time: the latest event, or what's playing, in the accent colour.
-  char line[48] = "";
-  GColor lc = ACCENT;
-  if (g_home.last.id && time(NULL) - g_home.last.ts < 7200) {
-    char ago[12];
-    fmt_ago(g_home.last.ts, ago, sizeof(ago));
-    snprintf(line, sizeof(line), "%s · %s", g_home.last.title, ago);
-    lc = theme_kind_colour(g_home.last.kind);
-  } else {
-    for (int i = 0, n = list_count(g_home.media); i < n; i++) {
-      char st[12], title[42];
-      list_field(g_home.media, i, 2, st, sizeof(st));
-      if (strcmp(st, "playing") != 0) continue;
-      list_field(g_home.media_t, i, 0, title, sizeof(title));
-      snprintf(line, sizeof(line), "%s", title);
-      break;
+  // Above the time: the alarm in its colour and, over it, a print under way.
+  if (g_home.have_state && !stale) {
+    draw_text(ctx, g_home.alarm_label, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 30, 36, lw - 34, 18),
+              theme_alarm_colour(a));
+    if (g_home.print_pct >= 0) {
+      char line[32], eta[8] = "";
+      if (g_home.print_eta > 0) {
+        time_t when = g_home.print_eta;
+        strftime(eta, sizeof(eta), clock_is_24h_style() ? "%H:%M" : "%l:%M", localtime(&when));
+      }
+      snprintf(line, sizeof(line), "%s %d%%%s%s", g_home.print_paused ? "Paused" : "Print",
+               (int)g_home.print_pct, eta[0] ? " · " : "", eta[0] == ' ' ? eta + 1 : eta);
+      draw_text(ctx, line, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 44, 18, lw - 58, 18), ACCENT);
     }
   }
-  if (line[0]) draw_text(ctx, line, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 30, 36, lw - 34, 18), lc);
 
   // Below the time: lock and openings. (No presence: phone location isn't
   // reliable enough to put on the wrist.)

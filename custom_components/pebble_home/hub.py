@@ -15,6 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_FRIENDLY_NAME, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
@@ -59,6 +60,30 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SIGNAL_WATCH_UPDATE = f"{DOMAIN}_watch_update"
+
+# OctoPrint's entities, found by their unique id prefix ("Job Percentage-<uuid>").
+PRINTER_PARTS = {
+    "printing": ("binary_sensor", "Printing-"),
+    "pct": ("sensor", "Job Percentage-"),
+    "finish": ("sensor", "Estimated Finish Time-"),
+    "state": ("sensor", "Current State-"),
+}
+
+
+def find_printer(hass: HomeAssistant) -> dict[str, str]:
+    """The first OctoPrint printer's entities, or {} when there is none."""
+    found: dict[str, dict[str, str]] = {}
+    for ent in er.async_get(hass).entities.values():
+        if ent.platform != "octoprint" or ent.disabled_by:
+            continue
+        for part, (domain, prefix) in PRINTER_PARTS.items():
+            if ent.domain == domain and ent.unique_id.startswith(prefix):
+                found.setdefault(ent.unique_id[len(prefix):], {})[part] = ent.entity_id
+    for parts in found.values():
+        if "printing" in parts and "pct" in parts:
+            return parts
+    return {}
+
 
 ALARM_SHORT = {
     "disarmed": "Disarmed",
@@ -163,6 +188,7 @@ class PebbleHub:
         self._store: Store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.pin")
         self.pin_failures = 0
         self.pin_locked_until = 0.0
+        self.printer: dict[str, str] = {}
 
     # ------------------------------------------------------------------ config
     @property
@@ -234,6 +260,7 @@ class PebbleHub:
             ids.append(self.opts[CONF_WEATHER])
         for key in (CONF_PEOPLE, CONF_LOCKS, CONF_PERIMETER, CONF_STATUS, CONF_ACTIONS, CONF_MEDIA):
             ids += self._list(key)
+        ids += self.printer.values()
         return ids
 
     # --------------------------------------------------------------- lifecycle
@@ -241,6 +268,7 @@ class PebbleHub:
         saved = await self._store.async_load() or {}
         self.pin_failures = int(saved.get("failures", 0))
         self.pin_locked_until = float(saved.get("locked_until", 0))
+        self.printer = find_printer(self.hass)
         self._last_digest = self._digest()
         watched = self.watched_entities()
         if watched:
@@ -600,6 +628,33 @@ class PebbleHub:
             return entity_id.split(".", 1)[-1].replace("_", " ").title()
         return str(st.attributes.get(ATTR_FRIENDLY_NAME, entity_id))
 
+    def _print_job(self) -> dict[str, Any] | None:
+        """Progress of the print under way (or paused), else None."""
+        if not self.printer:
+            return None
+        get = self.hass.states.get
+        printing = get(self.printer["printing"])
+        state = get(self.printer.get("state", ""))
+        paused = bool(state and state.state.lower().startswith("paus"))
+        if not paused and not (printing and printing.state == STATE_ON):
+            return None
+        try:
+            pct = max(0, min(100, round(float(get(self.printer["pct"]).state))))
+        except (AttributeError, TypeError, ValueError):
+            pct = 0
+        finish = 0
+        if (st := get(self.printer.get("finish", ""))) and st.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            try:
+                from homeassistant.util import dt as dt_util
+
+                when = dt_util.parse_datetime(st.state)
+                # Whole minutes: the estimate drifts by seconds on every poll,
+                # and each change would wake the watch.
+                finish = int(when.timestamp()) // 60 * 60 if when else 0
+            except (TypeError, ValueError):
+                finish = 0
+        return {"p": pct, "e": finish, "s": "paused" if paused else "printing"}
+
     def snapshot(self) -> dict[str, Any]:
         """Compact state for the watch. Keys are short: AppMessage is small."""
         if self._state_cache is not None:
@@ -709,6 +764,9 @@ class PebbleHub:
                 "art": (a.get("entity_picture") or "")[-8:],
             })
         out["media"] = media[:14]
+
+        if pr := self._print_job():
+            out["pr"] = pr
 
         out["cams"] = [{"id": c, "n": n[:16]} for c, n in self.visible_cameras()]
         out["acts"] = [{"id": a, "n": self._name(a)[:28]} for a in self._list(CONF_ACTIONS)]

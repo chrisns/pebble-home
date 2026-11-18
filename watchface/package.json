@@ -1,7 +1,7 @@
 {
   "name": "home-face",
   "author": "Chris Nesbitt-Smith",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "keywords": [
     "pebble-app"
   ],
@@ -82,7 +82,10 @@
       "aF",
       "eA",
       "eAf",
-      "ql"
+      "ql",
+      "prP",
+      "prE",
+      "prS"
     ],
     "capabilities": [
       "configurable"

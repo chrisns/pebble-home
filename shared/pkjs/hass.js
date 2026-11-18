@@ -199,6 +199,10 @@ function packState(s) {
     return m.id + ':' + clean(m.n, 14) + ':' + m.s + ':' + m.vol + ':' + m.mute + ':' + m.lead + ':' + clean(m.art || '-', 8);
   }).join('|');
   d.mediaT = media.map(function (m) { return clean(m.t, 40) + ':' + clean(m.a, 30); }).join('|');
+  // A print under way: percent, finish time (epoch, 0 unknown), paused.
+  d.prP = s.pr ? s.pr.p : -1;
+  d.prE = s.pr && s.pr.e ? s.pr.e : 0;
+  d.prS = s.pr && s.pr.s === 'paused' ? 1 : 0;
   d.pinLock = s.pin_lock || 0;
   d.pinReq = (s.pin || localPin()) ? 1 : 0;
   // The watch keeps the Quick Launch choices so it can act on them before we're up.

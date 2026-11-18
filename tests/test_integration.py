@@ -453,3 +453,39 @@ async def test_notification_button_reports_a_lock_that_failed(hass, setup):
     hass.states.async_set("lock.front_door", "locked", {"friendly_name": "Front door"})
     _answer_with_lock(hass, "unlocking", "locked")
     assert await _press_unlock(hass, setup) == {"ok": False, "err": "Front door did not unlock"}
+
+
+async def test_print_progress_from_octoprint(hass, setup):
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.pebble_home.hub import find_printer
+
+    reg = er.async_get(hass)
+    for domain, uid, oid in (
+        ("binary_sensor", "Printing-abc", "octoprint_printing"),
+        ("sensor", "Job Percentage-abc", "octoprint_job_percentage"),
+        ("sensor", "Estimated Finish Time-abc", "octoprint_estimated_finish_time"),
+        ("sensor", "Current State-abc", "octoprint_current_state"),
+    ):
+        reg.async_get_or_create(domain, "octoprint", uid, suggested_object_id=oid)
+    hub = setup.hub
+    hub.printer = find_printer(hass)
+    assert hub.printer["pct"] == "sensor.octoprint_job_percentage"
+
+    def snap():
+        hub._state_cache = None
+        return hub.snapshot()
+
+    hass.states.async_set("binary_sensor.octoprint_printing", "off")
+    hass.states.async_set("sensor.octoprint_current_state", "Operational")
+    assert "pr" not in snap()
+    hass.states.async_set("binary_sensor.octoprint_printing", "on")
+    hass.states.async_set("sensor.octoprint_job_percentage", "41.6")
+    hass.states.async_set("sensor.octoprint_estimated_finish_time", "2026-11-18T23:45:37+00:00")
+    hass.states.async_set("sensor.octoprint_current_state", "Printing")
+    assert snap()["pr"] == {"p": 42, "e": 1795045500, "s": "printing"}
+    # Paused: the Printing flag drops, but the job is still there.
+    hass.states.async_set("binary_sensor.octoprint_printing", "off")
+    hass.states.async_set("sensor.octoprint_current_state", "Paused")
+    hass.states.async_set("sensor.octoprint_estimated_finish_time", "unknown")
+    assert snap()["pr"] == {"p": 42, "e": 0, "s": "paused"}
