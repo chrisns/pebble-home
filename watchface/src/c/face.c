@@ -343,22 +343,13 @@ static void draw_face(GContext *ctx, GRect b) {
   // An older build than the integration ships: say so round the left rim.
   if (g_home.upd[0]) draw_rim_text(ctx, "UPDATE IN PEBBLE APP", b, 125, GColorChromeYellow);
 
-  // Below the time: lock and openings. (No presence: phone location isn't
-  // reliable enough to put on the wrist.)
+  // Below the time: doors and windows left open.
   if (g_home.have_state && !stale) {
-    char lock_state[12] = "", status[40];
-    list_field(g_home.locks, 0, 2, lock_state, sizeof(lock_state));
-    bool locked = strcmp(lock_state, "locked") == 0;
-    bool unlocked = strcmp(lock_state, "unlocked") == 0 || strcmp(lock_state, "open") == 0;
-    // Unknown, unavailable or jammed: say we don't know rather than "Unlocked".
-    const char *lock = locked ? "Locked" : unlocked ? "Unlocked" : "Lock ?";
-    if (g_home.open_n) {
-      snprintf(status, sizeof(status), "%s · %d open", lock, (int)g_home.open_n);
-    } else {
-      snprintf(status, sizeof(status), "%s · All shut", lock);
-    }
+    char status[24];
+    if (g_home.open_n) snprintf(status, sizeof(status), "%d open", (int)g_home.open_n);
+    else snprintf(status, sizeof(status), "All shut");
     draw_text(ctx, status, FONT_KEY_GOTHIC_14_BOLD, GRect(lx + 10, 194, lw - 10, 18),
-              (unlocked || g_home.open_n) ? GColorOrange : GColorLightGray);
+              g_home.open_n ? GColorOrange : GColorLightGray);
   } else if (!g_home.configured) {
     draw_text(ctx, "Set up in the Pebble app", FONT_KEY_GOTHIC_14, GRect(lx + 6, 192, lw - 6, 18), GColorLightGray);
   }
