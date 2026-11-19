@@ -140,27 +140,45 @@ static void draw_text(GContext *ctx, const char *txt, const char *font, GRect bo
 #define SIDE_CX 214
 #define ACCENT GColorMagenta
 
+// Steps in k: "842", "8.4k", "12k".
+static void fmt_k(char *out, size_t n, int v) {
+  if (v < 1000) snprintf(out, n, "%d", v);
+  else if (v < 10000) snprintf(out, n, "%d.%dk", v / 1000, (v % 1000) / 100);
+  else snprintf(out, n, "%dk", v / 1000);
+}
+
+// Today's steps in a disc whose ring fills towards a usual day's total for
+// this day of the week. The Round 2 has no heart rate sensor.
 static void draw_health(GContext *ctx, GColor fg) {
-  HealthValue bpm = 0, steps = 0;
+  HealthValue steps = 0, usual = 0;
 #if defined(PBL_HEALTH)
   time_t now = time(NULL), start = time_start_of_today();
-  bpm = health_service_peek_current_value(HealthMetricHeartRateBPM);
   if (health_service_metric_accessible(HealthMetricStepCount, start, now) & HealthServiceAccessibilityMaskAvailable) {
     steps = health_service_sum_today(HealthMetricStepCount);
+    usual = health_service_sum_averaged(HealthMetricStepCount, start, start + SECONDS_PER_DAY,
+                                        HealthServiceTimeScopeDailyWeekdayOrWeekend);
   }
 #endif
   GPoint c = GPoint(SIDE_CX, 106);
-  graphics_context_set_fill_color(ctx, GColorRed);
-  graphics_fill_circle(ctx, c, 16);
+  GRect ring = GRect(c.x - 16, c.y - 16, 33, 33);
   graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, c, 13);
+  graphics_fill_circle(ctx, c, 16);
+  graphics_context_set_fill_color(ctx, GColorDarkGray);
+  graphics_fill_radial(ctx, ring, GOvalScaleModeFitCircle, 3, 0, TRIG_MAX_ANGLE);
+  if (usual > 0 && steps > 0) {
+    int32_t a = steps >= usual ? TRIG_MAX_ANGLE : (int32_t)((int64_t)TRIG_MAX_ANGLE * steps / usual);
+    graphics_context_set_fill_color(ctx, steps >= usual ? GColorGreen : GColorChromeYellow);
+    graphics_fill_radial(ctx, ring, GOvalScaleModeFitCircle, 3, 0, a);
+  }
   char num[8];
-  if (bpm > 0) snprintf(num, sizeof(num), "%d", (int)bpm);
-  else snprintf(num, sizeof(num), "--");
-  draw_text(ctx, num, FONT_KEY_GOTHIC_18_BOLD, GRect(c.x - 15, c.y - 13, 30, 22), GColorWhite);
-  if (steps >= 1000) snprintf(num, sizeof(num), "%d,%03d", (int)steps / 1000, (int)steps % 1000);
-  else snprintf(num, sizeof(num), "%d", (int)steps);
-  draw_text(ctx, num, FONT_KEY_GOTHIC_14_BOLD, GRect(SIDE_CX - 32, 122, 64, 18), fg);
+  fmt_k(num, sizeof(num), (int)steps);
+  draw_text(ctx, num, FONT_KEY_GOTHIC_14_BOLD, GRect(c.x - 14, c.y - 10, 28, 18), GColorWhite);
+  if (usual > 0) {
+    char lbl[12];
+    fmt_k(num, sizeof(num), (int)usual);
+    snprintf(lbl, sizeof(lbl), "of %s", num);
+    draw_text(ctx, lbl, FONT_KEY_GOTHIC_14, GRect(SIDE_CX - 32, 122, 64, 18), fg);
+  }
 }
 
 static void draw_battery(GContext *ctx, GPoint c, GColor fg) {
@@ -225,8 +243,8 @@ static void draw_sidebar(GContext *ctx, GRect b, AlarmState a, bool stale) {
     if (sp && strlen(cond) > 7) *sp = 0;  // "Partly cloudy" -> "Partly"
     draw_text(ctx, cond, FONT_KEY_GOTHIC_14, GRect(SIDE_CX - 32, 66, 64, 18), fg);
   }
-  // Middle: the last heart rate in a red-ringed disc, today's steps under it,
-  // both from the watch's own sensors. (The alarm is above the time.)
+  // Middle: today's steps against a usual day, from the watch's own sensors.
+  // (The alarm is above the time.)
   draw_health(ctx, fg);
   // Date
   time_t now = time(NULL);
